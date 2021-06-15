@@ -1,3 +1,4 @@
+from functools import reduce
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import Subset
@@ -7,25 +8,74 @@ from torchvision.transforms import ToTensor
 from torchvision.transforms import Compose
 from torchvision.transforms import Normalize
 from torchvision.models import resnet18
-
 import torch_optimizer as optim
-
 import time
-
 from plot import plot_train_val
+from sklearn.model_selection import ParameterGrid
+
+def parameter_grid(lr_min=-4, lr_max = 0, momentums_min = 0.9, momentums_max=1.0, momentums_step = 0.01):
+    """
+    Create hyperparameter grid, which needs to be searched
+    """
+    optimizers = ["SGD", "SGD+momentum", "adam", "adahessian"]
+    learning_rates = 10 ** torch.arange(start=lr_min,end=lr_max+1,dtype = torch.float64)
+    momentums = torch.arange(start=momentums_min,end=momentums_max,step = momentums_step, dtype = torch.float64)
+    model_names = ['resnet18']
+    batch_size= [100]
+    nb_epochs = [5]
+    reducers = [100]
+ 
+    hyperparameters = {
+        "optimizers": optimizers,
+        "learning_rates":learning_rates,
+        "momentums" : momentums,
+        "model_names":model_names,
+        "batch_size" : batch_size,
+        "nb_epochs":nb_epochs,
+        "reducers":reducers
+    }
+    
+    return ParameterGrid(hyperparameters)
+
+def parameter_grid_search(plot = True, print_ = True):
+    """
+    Searches the hyperparameter grid
+    """
+    PG = parameter_grid()
+    curr_test_acc = 0.0
+    best_return, best_hyperparameters = {}, {}
+    iteration_number, total_parameter_grid_points = 1, len(PG)
+    for hyperparameters in PG:
+        optimizer = hyperparameters["optimizers"]
+        lr = hyperparameters["learning_rates"]
+        momentum = hyperparameters["momentums"]
+        model_name = hyperparameters["model_names"]
+        batch_size = hyperparameters["batch_size"]
+        nb_epochs = hyperparameters["nb_epochs"]
+        reduce = hyperparameters["reducers"]
+        returns = run_experiment(optimizer_name=optimizer, model_name=model_name, nb_epochs = nb_epochs, batch_size = batch_size, plot=plot, reduce=reduce,print_  = print_,lr = lr, momentum = momentum)
+        if curr_test_acc < returns["test_acc"]:
+            best_return = returns.copy()
+            best_hyperparameters = hyperparameters.copy()
+        print(f"\n---------- Finished {iteration_number}/{total_parameter_grid_points} ----------------------------\n")
+        iteration_number +=1
+    return best_return, best_hyperparameters
+
 
 
 def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs = 10, 
-                            batch_size = 100, plot=True, reduce=100):
+                            batch_size = 100, plot=True, reduce=100, print_  = True,lr = 0.005, momentum = 0.9):
     '''
     Run Experiment
     '''
     experiment_name = model_name + '_' + optimizer_name
     device = ('cuda' if torch.cuda.is_available() else 'cpu')
-    print("Device used: ", device,'\n')
+    if print_:
+        print("Device used: ", device,'\n')
 
     # loading the data
-    print("Dataset: MNIST")
+    if print_:
+        print("Dataset: MNIST")
     train_ds = MNIST('./data/' +"mnist", train=True, transform=ToTensor(),download=True)
     test_ds = MNIST('./data/' +"mnist", train=False, transform=ToTensor(),download=True)
     
@@ -35,17 +85,19 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
         train_ds = Subset(train_ds, train_filter)
         test_filter = list(range(1, len(test_ds), reduce))
         test_ds = Subset(test_ds, test_filter)
-
-    print("Training size: ", len(train_ds))
-    print("Test size: ", len(test_ds))
-    print("Dimension Images: 28x28")
-    print('Number of classes: 10 \n')    
+    
+    if print_:
+        print("Training size: ", len(train_ds))
+        print("Test size: ", len(test_ds))
+        print("Dimension Images: 28x28")
+        print('Number of classes: 10 \n')    
 
     train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     test_dl = DataLoader(test_ds, batch_size=batch_size)
 
     # model
-    print('Model: ', model_name.capitalize())
+    if print_:
+        print('Model: ', model_name.capitalize())
     if model_name=='resnet18':
         model = resnet18(num_classes=10, pretrained=False)
         model.conv1 = torch.nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
@@ -53,21 +105,24 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
         raise ValueError('The model selected doesn\'t exists or it is not already implemented')
     model = model.to(device) 
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print('Number of parameters: ',n_parameters,'\n')
+    if print_:
+        print('Number of parameters: ',n_parameters,'\n')
        
     # training
-    print('Loss Function: Cross Entropy Loss')
+    if print_:
+        print('Loss Function: Cross Entropy Loss')
     criterion = torch.nn.CrossEntropyLoss()
-    print('Optimizer: ', optimizer_name.capitalize())
+    if print_:
+        print('Optimizer: ', optimizer_name.capitalize())
     if optimizer_name=='SGD':
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.005)
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr) # lr = 5*1e-3
     elif optimizer_name=='SGD+momentum':
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.005, momentum=0.9)
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum) # lr = 5*1e-3 momentum = 9* 1e-1
     elif optimizer_name=='adam':
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.005)
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)# lr = 5*1e-3
     elif optimizer_name=='adahessian':
         optimizer = optim.Adahessian(model.parameters(),
-                                    lr= 1.0,
+                                    lr= lr, # lr = 1.0
                                     betas= (0.9, 0.999),
                                     eps= 0.0001,
                                     weight_decay=0.0,
@@ -76,21 +131,41 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
     else:
         raise ValueError('The optimizer selected doesn\'t exists or it is not already implemented')
     
+    # Train the model and measure total training time
     start = time.time()
     train_losses, val_losses = train(model, train_dl, test_dl, optimizer,criterion, device, experiment_name, nb_epochs)
     end = time.time()
-    print('Training time: {0:.3f} seconds'.format(end-start))
+    total_training_time = end-start
+
+    if print_:
+        print('Training time: {0:.3f} seconds'.format(total_training_time))
 
     # load model
     path = "./model_weights/" + experiment_name + ".pth"
     model.load_state_dict(torch.load(path))
 
-    # test
-    print('\n\nAccuracy Train: {}%'.format(test(model,train_dl, device)))
-    print('Accuracy Test: {}%'.format(test(model,test_dl, device)))
+    # Accuracy Train
+    train_acc = test(model,train_dl, device)
+    if print_:
+        print('\n\nAccuracy Train: {}%'.format(train_acc))
+    
+    # Accuracy Test
+    test_acc = test(model,test_dl, device)
+    if print_:    
+        print('Accuracy Test: {}%'.format(test_acc))
 
     # plot evolution losses
     if plot==True: plot_train_val(train_losses, val_losses, period=1, model_name=experiment_name)
+
+    # return time, losses and accuracies
+    returns = {
+        "training_time" : total_training_time,
+        "train_losses":train_losses,
+        "val_losses":val_losses,
+        "train_acc":train_acc,
+        "test_acc":test_acc
+    }
+    return returns
 
 
 def test(model, dataloader, device):
