@@ -2,7 +2,7 @@ import torch
 import matplotlib.pyplot as plt
 
 def plot_train_val(m_train, m_val, period, 
-                    al_param=False, metric='Cross-Entropy Loss', save=True, model_name=''):
+                    al_param=False, metric='Cross-Entropy Loss', save=True, model_name='', hybrid=0):
     """
     Plot the evolution of the metric evaluated on the training and validation set during the trainining
     
@@ -18,7 +18,7 @@ def plot_train_val(m_train, m_val, period,
         plot
     """
     plt.figure(figsize=(8,5))
-    plt.title('Evolution of the '+metric+ ' with respect to the number of epochs',fontsize=14)
+    plt.title('Evolution of the '+metric ,fontsize=14)
     if al_param:
         al_steps = torch.Tensor(  range( 1, int(len(m_train)*period/al_param +1) )  ) *al_param
         for al_step in al_steps:
@@ -28,6 +28,7 @@ def plot_train_val(m_train, m_val, period,
     plt.plot(torch.Tensor(range(1,len(m_val)+1))*period, m_val, 
                 color='m', marker='o', ls=':', label=metric+' val')
     plt.axhline(min(m_val), ls=':',color='black')
+    if hybrid: plt.axvline(hybrid, color='black')
     plt.xlabel('Number of Epochs')
     plt.ylabel(metric)
     plt.legend(loc = 'upper right')
@@ -35,8 +36,18 @@ def plot_train_val(m_train, m_val, period,
         plt.savefig('plots/'+model_name+' '+metric)
     plt.show()
 
-def plot_spectral_norms(spectral_norms, layer = "last_layer" , save = True):
+def plot_grads_sp(first_layer, last_layer, experiment_name='', hybrid=0, save=True):
     plt.figure(figsize=(8,5))
-    plt.title('Evolution of the Spectral norm of weights in the last layer with respect to the number of epochs',fontsize=14)
-    plt.plot(spectral_norms)
+    plt.title('Evolution of the Spectral norm of the gradient of the Loss',fontsize=14)
+    plt.plot(torch.Tensor(range(1,len(first_layer)+1)), first_layer, 
+                color='c', marker='o', ls=':', label='First Convolution')
+    plt.plot(torch.Tensor(range(1,len(last_layer)+1)), last_layer, 
+                color='m', marker='o', ls=':', label='Last Linear Layer')
+    if hybrid: plt.axvline(hybrid, color='black')
+    plt.yscale('log')
+    plt.xlabel('Number of Epochs')
+    plt.ylabel('Spectral Norm of the gradient')
+    plt.legend(loc = 'upper right')
+    if save==True:
+        plt.savefig('plots/'+experiment_name+' gradients decay')
     plt.show()

@@ -1,28 +1,30 @@
-from functools import reduce
+
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import Subset
+import torch_optimizer as optim
+torch.manual_seed(0)
 
 from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
-from torchvision.transforms import Compose
-from torchvision.transforms import Normalize
 from torchvision.models import resnet18
-import torch_optimizer as optim
-import time
-from plot import *
+
 from sklearn.model_selection import ParameterGrid
 
-def parameter_grid(lr_min=-4, lr_max = 0, momentums_min = 0.9, momentums_max=1.0, momentums_step = 0.01):
+import time
+from plot import *
+
+
+def parameter_grid(lr_min=-2, lr_max = 2):
     """
     Create hyperparameter grid, which needs to be searched
     """
-    optimizers = ["SGD", "SGD+momentum", "adam", "adahessian"]
+    optimizers = ["adahessian"] #[ "SGD", "SGD+momentum", "adam", "adahessian"]
     learning_rates = 10 ** torch.arange(start=lr_min,end=lr_max+1,dtype = torch.float64)
-    momentums = torch.arange(start=momentums_min,end=momentums_max,step = momentums_step, dtype = torch.float64)
+    momentums = [0.9]
     model_names = ['resnet18']
     batch_size= [100]
-    nb_epochs = [5]
+    nb_epochs = [10]
     reducers = [100]
  
     hyperparameters = {
@@ -37,15 +39,14 @@ def parameter_grid(lr_min=-4, lr_max = 0, momentums_min = 0.9, momentums_max=1.0
     
     return ParameterGrid(hyperparameters)
 
-def parameter_grid_search(plot = True, print_ = True):
+def parameter_grid_search(plot = False, print_ = False):
     """
-    Searches the hyperparameter grid
+    Hyper-parameters tuning using Grid Search
     """
     PG = parameter_grid()
     curr_test_acc = 0.0
     best_return, best_hyperparameters = {}, {}
-    iteration_number, total_parameter_grid_points = 1, len(PG)
-    for hyperparameters in PG:
+    for iteration_number, hyperparameters in enumerate(PG):
         optimizer = hyperparameters["optimizers"]
         lr = hyperparameters["learning_rates"]
         momentum = hyperparameters["momentums"]
@@ -53,18 +54,19 @@ def parameter_grid_search(plot = True, print_ = True):
         batch_size = hyperparameters["batch_size"]
         nb_epochs = hyperparameters["nb_epochs"]
         reduce = hyperparameters["reducers"]
+        print(f"\n---------- Experiment {iteration_number+1}/{len(PG)} ----------\n")
+        print(f"Method: {optimizer}")
+        print(f"Learning Rate: {lr}")
         returns = run_experiment(optimizer_name=optimizer, model_name=model_name, nb_epochs = nb_epochs, batch_size = batch_size, plot=plot, reduce=reduce,print_  = print_,lr = lr, momentum = momentum)
-        if curr_test_acc < returns["test_acc"]:
+        valid_acc = returns["valid_acc"]
+        if curr_test_acc < valid_acc:
             best_return = returns.copy()
             best_hyperparameters = hyperparameters.copy()
-        print(f"\n---------- Finished {iteration_number}/{total_parameter_grid_points} ----------------------------\n")
-        iteration_number +=1
+        print(f"Accuracy Validation: {valid_acc}")
     return best_return, best_hyperparameters
 
-
-
-def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs = 10, 
-                            batch_size = 100, plot=True, reduce=100, print_  = True,lr = 0.005, momentum = 0.9):
+def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs = 15, 
+                            batch_size = 100, plot=True, reduce=100, print_= True, lr = 0.005, momentum = 0.9):
     '''
     Run Experiment
     '''
@@ -83,16 +85,20 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
     if reduce!=None:
         train_filter = list(range(0, len(train_ds), reduce))
         train_ds = Subset(train_ds, train_filter)
-        test_filter = list(range(1, len(test_ds), reduce))
+        valid_filter = list(range(1, len(test_ds), reduce))
+        valid_ds = Subset(test_ds, valid_filter)
+        test_filter = list(range(2, len(test_ds), reduce))
         test_ds = Subset(test_ds, test_filter)
     
     if print_:
         print("Training size: ", len(train_ds))
+        print("Validation size: ", len(valid_ds))
         print("Test size: ", len(test_ds))
         print("Dimension Images: 28x28")
         print('Number of classes: 10 \n')    
 
-    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=False)
+    valid_dl = DataLoader(valid_ds, batch_size=batch_size)
     test_dl = DataLoader(test_ds, batch_size=batch_size)
 
     # model
@@ -112,28 +118,33 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
     if print_:
         print('Loss Function: Cross Entropy Loss')
     criterion = torch.nn.CrossEntropyLoss()
+    hybrid = False
     if print_:
         print('Optimizer: ', optimizer_name.capitalize())
+        print('Learning Rate: ', lr,'\n')
     if optimizer_name=='SGD':
         optimizer = torch.optim.SGD(model.parameters(), lr=lr) # lr = 5*1e-3
     elif optimizer_name=='SGD+momentum':
-        optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum) # lr = 5*1e-3 momentum = 9* 1e-1
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum) # lr = 5*1e-3 momentum = 0.9
     elif optimizer_name=='adam':
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)# lr = 5*1e-3
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr) # lr = 5*1e-3
     elif optimizer_name=='adahessian':
         optimizer = optim.Adahessian(model.parameters(),
-                                    lr= lr, # lr = 1.0
+                                    lr= lr, # lr = 1
                                     betas= (0.9, 0.999),
                                     eps= 0.0001,
                                     weight_decay=0.0,
                                     hessian_power=1.0,
                                 )
+    elif optimizer_name=='hybrid':
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum) # lr = 5*1e-3 momentum = 0.9
+        hybrid = True
     else:
         raise ValueError('The optimizer selected doesn\'t exists or it is not already implemented')
     
     # Train the model and measure total training time
     start = time.time()
-    train_losses, val_losses,spectral_norms_last_layer = train(model, train_dl, test_dl, optimizer,criterion, device, experiment_name, nb_epochs, calculate_spectral_norms = True)
+    train_losses, valid_losses,grads_sn_fl, grads_sn_ll, change = train(model, train_dl, test_dl, optimizer,criterion, device, experiment_name, nb_epochs, hybrid=hybrid, calculate_spectral_norms = True, print_=print_)
     end = time.time()
     total_training_time = end-start
 
@@ -144,32 +155,33 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
     path = "./model_weights/" + experiment_name + ".pth"
     model.load_state_dict(torch.load(path))
 
-    # Accuracy Train
+    # Accuracy
     train_acc = test(model,train_dl, device)
-    if print_:
-        print('\n\nAccuracy Train: {}%'.format(train_acc))
-    
-    # Accuracy Test
+    valid_acc = test(model,valid_dl, device)
     test_acc = test(model,test_dl, device)
-    if print_:    
-        print('Accuracy Test: {}%'.format(test_acc))
+    if print_:
+        print('\n\nAccuracy Train: {}%'.format(train_acc))   
+        print('Accuracy Validation: {}%'.format(valid_acc))   
+        print('Accuracy Test: {}%\n'.format(test_acc))
 
     # plot evolution losses
     if plot: 
-        plot_train_val(train_losses, val_losses, period=1, model_name=experiment_name)
-        plot_spectral_norms(spectral_norms=spectral_norms_last_layer)
+        plot_train_val(train_losses, valid_losses, period=1, model_name=experiment_name, hybrid=change)
+        plot_grads_sp(grads_sn_fl, grads_sn_ll, experiment_name=experiment_name, hybrid=change)
 
     # return time, losses and accuracies
     returns = {
         "training_time" : total_training_time,
         "train_losses":train_losses,
-        "val_losses":val_losses,
+        "val_losses":valid_losses,
         "train_acc":train_acc,
+        "valid_acc":valid_acc,
         "test_acc":test_acc,
-        "spectral_norms_last_layer":spectral_norms_last_layer
+        "grads_sn_fl":grads_sn_fl,
+        "grads_sn_ll":grads_sn_ll
     }
-    return returns
 
+    return returns
 
 def test(model, dataloader, device):
     '''
@@ -188,20 +200,20 @@ def test(model, dataloader, device):
     
     return (100 * correct / total)
 
-  
-
-def train(model, train_loader, val_loader, optimizer, criterion, device, model_name, nb_epochs = 10, calculate_spectral_norms = True):
+def train(model, train_loader, valid_loader, optimizer, criterion, device, model_name, nb_epochs = 10, hybrid=False, print_=True, calculate_spectral_norms = True):
     """
     Train a model
     """
     train_losses = []
-    val_losses = []
-    spectral_norms_last_layer = []
+    valid_losses = []
+    grads_sn_fl = []
+    grads_sn_ll = []
+    change = 0
     for epoch in range(nb_epochs):
+        grad_sn_fl = 0
+        grad_sn_ll = 0
         train_loss = 0
         model.train()
-        i = 0
-        spectral_norm = 0
         ##### Training ######
         for data in train_loader:
             inputs, targets = data
@@ -210,38 +222,49 @@ def train(model, train_loader, val_loader, optimizer, criterion, device, model_n
             optimizer.zero_grad()
             output = model(inputs)
             loss = criterion(output, targets)
-            loss.backward(create_graph = True,)
+            loss.backward(create_graph = True)
             # Update the Gradient
             optimizer.step()
             # Collect the Losses
             train_loss += loss.data.item()
-
+            # Save the spectral norm of the gradient
             if calculate_spectral_norms:
-                i += 1
-                spectral_norm += torch.linalg.matrix_norm(model.fc.weight.grad, ord = 2)
-
+                grad_sn_fl += torch.linalg.matrix_norm(model.conv1.weight.grad, ord = 2).sum()
+                grad_sn_ll += torch.linalg.matrix_norm(model.fc.weight.grad, ord = 2)
         train_loss = train_loss / len(train_loader)
-        train_losses.append(train_loss) 
-        #
+        train_losses.append(train_loss)
         if calculate_spectral_norms:
-            spectral_norms_last_layer.append(spectral_norm)
-            print(f"Epoch {epoch} / {nb_epochs} average spectral norm of last layer for single batch {spectral_norm/i}\n")
-        #
+            grad_sn_fl = grad_sn_fl / (len(train_loader)*64)
+            grad_sn_ll = grad_sn_ll / (len(train_loader)*64)
+            grads_sn_fl.append(grad_sn_fl)
+            grads_sn_ll.append(grad_sn_ll)
+
+
         ##### Evaluation #####
         model.eval()
-        val_loss = 0
-        for data in val_loader:
+        valid_loss = 0
+        for data in valid_loader:
             inputs, targets = data
             inputs = inputs.to(device)
             targets = targets.to(device)
             with torch.no_grad():
-                val_preds = model(inputs)
-                val_loss += criterion(val_preds, targets).data.item()
-        val_loss = val_loss / len(val_loader) 
-        val_losses.append(val_loss)
+                valid_preds = model(inputs)
+                valid_loss += criterion(valid_preds, targets).data.item()
+        valid_loss = valid_loss / len(valid_loader) 
+        valid_losses.append(valid_loss)
         # save best model in validation
-        if val_loss <= min(val_losses):
+        if valid_loss <= min(valid_losses):
             torch.save(model.state_dict(), "./model_weights/" + model_name + ".pth")
-        print("Epoch", epoch+1, "/", nb_epochs, "train loss:", train_loss, "valid loss:", val_loss)
-    
-    return train_losses, val_losses, spectral_norms_last_layer
+        
+        if hybrid and valid_loss < 1 and change==0:
+            optimizer = optim.Adahessian(model.parameters(),
+                                    lr= 1, # lr = 1
+                                    betas= (0.9, 0.999),
+                                    eps= 0.0001,
+                                    weight_decay=0.0,
+                                    hessian_power=1.0,
+                                )
+            change = epoch+1
+        if print_: print("Epoch", epoch+1, "/", nb_epochs, "train loss:", train_loss, "valid loss:", valid_loss)
+
+    return train_losses, valid_losses, grads_sn_fl, grads_sn_ll, change
