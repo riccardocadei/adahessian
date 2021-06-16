@@ -15,16 +15,16 @@ import time
 from plot import *
 
 
-def parameter_grid(lr_min=-2, lr_max = 2):
+def parameter_grid(lr_min=0.1, lr_max = 1, step=0.2):
     """
     Create hyperparameter grid, which needs to be searched
     """
     optimizers = ["adahessian"] #[ "SGD", "SGD+momentum", "adam", "adahessian"]
-    learning_rates = 10 ** torch.arange(start=lr_min,end=lr_max+1,dtype = torch.float64)
+    learning_rates = torch.arange(start=lr_min,end=lr_max,step=step,dtype = torch.float64)
     momentums = [0.9]
     model_names = ['resnet18']
     batch_size= [100]
-    nb_epochs = [10]
+    nb_epochs = [15]
     reducers = [100]
  
     hyperparameters = {
@@ -57,12 +57,17 @@ def parameter_grid_search(plot = False, print_ = False):
         print(f"\n---------- Experiment {iteration_number+1}/{len(PG)} ----------\n")
         print(f"Method: {optimizer}")
         print(f"Learning Rate: {lr}")
-        returns = run_experiment(optimizer_name=optimizer, model_name=model_name, nb_epochs = nb_epochs, batch_size = batch_size, plot=plot, reduce=reduce,print_  = print_,lr = lr, momentum = momentum)
-        valid_acc = returns["valid_acc"]
+        valid_accs = []
+        n_test = 5
+        for _ in range(n_test):
+            returns = run_experiment(optimizer_name=optimizer, model_name=model_name, nb_epochs = nb_epochs, batch_size = batch_size, plot=plot, reduce=reduce,print_  = print_,lr = lr, momentum = momentum)
+            valid_accs.append(returns["valid_acc"])
+        valid_acc = torch.Tensor(valid_accs).mean().item()
+        valid_acc_std = torch.Tensor(valid_accs).std().item()
         if curr_test_acc < valid_acc:
             best_return = returns.copy()
             best_hyperparameters = hyperparameters.copy()
-        print(f"Accuracy Validation: {valid_acc}")
+        print(f"Accuracy Validation: {valid_acc} ± {valid_acc_std}")
     return best_return, best_hyperparameters
 
 def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs = 15, 
@@ -258,7 +263,7 @@ def train(model, train_loader, valid_loader, optimizer, criterion, device, model
         
         if hybrid and valid_loss < 1 and change==0:
             optimizer = optim.Adahessian(model.parameters(),
-                                    lr= 1, # lr = 1
+                                    lr= 0.001, # lr = 1
                                     betas= (0.9, 0.999),
                                     eps= 0.0001,
                                     weight_decay=0.0,

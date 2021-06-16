@@ -28,7 +28,7 @@ def plot_train_val(m_train, m_val, period,
     plt.plot(torch.Tensor(range(1,len(m_val)+1))*period, m_val, 
                 color='m', marker='o', ls=':', label=metric+' val')
     plt.axhline(min(m_val), ls=':',color='black')
-    if hybrid: plt.axvline(hybrid, color='black')
+    if hybrid: plt.axvline(hybrid+0.5, color='black')
     plt.xlabel('Number of Epochs')
     plt.ylabel(metric)
     plt.legend(loc = 'upper right')
@@ -43,7 +43,7 @@ def plot_grads_sp(first_layer, last_layer, experiment_name='', hybrid=0, save=Tr
                 color='c', marker='o', ls=':', label='First Convolution')
     plt.plot(torch.Tensor(range(1,len(last_layer)+1)), last_layer, 
                 color='m', marker='o', ls=':', label='Last Linear Layer')
-    if hybrid: plt.axvline(hybrid, color='black')
+    if hybrid: plt.axvline(hybrid+0.5, color='black')
     plt.yscale('log')
     plt.xlabel('Number of Epochs')
     plt.ylabel('Spectral Norm of the gradient')
