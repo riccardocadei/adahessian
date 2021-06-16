@@ -133,7 +133,7 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
     
     # Train the model and measure total training time
     start = time.time()
-    train_losses, val_losses = train(model, train_dl, test_dl, optimizer,criterion, device, experiment_name, nb_epochs)
+    train_losses, val_losses,spectral_norms_last_layer = train(model, train_dl, test_dl, optimizer,criterion, device, experiment_name, nb_epochs)
     end = time.time()
     total_training_time = end-start
 
@@ -163,7 +163,8 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
         "train_losses":train_losses,
         "val_losses":val_losses,
         "train_acc":train_acc,
-        "test_acc":test_acc
+        "test_acc":test_acc,
+        "spectral_norms_last_layer":spectral_norms_last_layer
     }
     return returns
 
@@ -193,9 +194,12 @@ def train(model, train_loader, val_loader, optimizer, criterion, device, model_n
     """
     train_losses = []
     val_losses = []
+    spectral_norms_last_layer = []
     for epoch in range(nb_epochs):
         train_loss = 0
         model.train()
+        i = 0
+        spectral_norm = 0
         ##### Training ######
         for data in train_loader:
             inputs, targets = data
@@ -204,14 +208,21 @@ def train(model, train_loader, val_loader, optimizer, criterion, device, model_n
             optimizer.zero_grad()
             output = model(inputs)
             loss = criterion(output, targets)
-            loss.backward(create_graph = True)
+            loss.backward(create_graph = True,)
             # Update the Gradient
             optimizer.step()
             # Collect the Losses
             train_loss += loss.data.item()
-        train_loss = train_loss / len(train_loader)
-        train_losses.append(train_loss)
 
+            i += 1
+            spectral_norm += torch.linalg.matrix_norm(model.fc.weight.grad, ord = 2)
+
+        train_loss = train_loss / len(train_loader)
+        train_losses.append(train_loss) 
+        #
+        spectral_norms_last_layer.append(spectral_norm)
+        print(f"Epoch {epoch} / {nb_epochs} average spectral norm of last layer for single batch {spectral_norm/i}\n")
+        #
         ##### Evaluation #####
         model.eval()
         val_loss = 0
@@ -229,4 +240,4 @@ def train(model, train_loader, val_loader, optimizer, criterion, device, model_n
             torch.save(model.state_dict(), "./model_weights/" + model_name + ".pth")
         print("Epoch", epoch+1, "/", nb_epochs, "train loss:", train_loss, "valid loss:", val_loss)
     
-    return train_losses, val_losses
+    return train_losses, val_losses, spectral_norms_last_layer
