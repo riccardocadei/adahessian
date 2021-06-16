@@ -34,3 +34,9 @@ def plot_train_val(m_train, m_val, period,
     if save==True:
         plt.savefig('plots/'+model_name+' '+metric)
     plt.show()
+
+def plot_spectral_norms(spectral_norms, layer = "last_layer" , save = True):
+    plt.figure(figsize=(8,5))
+    plt.title('Evolution of the Spectral norm of weights in the last layer with respect to the number of epochs',fontsize=14)
+    plt.plot(spectral_norms)
+    plt.show()

@@ -10,7 +10,7 @@ from torchvision.transforms import Normalize
 from torchvision.models import resnet18
 import torch_optimizer as optim
 import time
-from plot import plot_train_val
+from plot import *
 from sklearn.model_selection import ParameterGrid
 
 def parameter_grid(lr_min=-4, lr_max = 0, momentums_min = 0.9, momentums_max=1.0, momentums_step = 0.01):
@@ -133,7 +133,7 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
     
     # Train the model and measure total training time
     start = time.time()
-    train_losses, val_losses,spectral_norms_last_layer = train(model, train_dl, test_dl, optimizer,criterion, device, experiment_name, nb_epochs)
+    train_losses, val_losses,spectral_norms_last_layer = train(model, train_dl, test_dl, optimizer,criterion, device, experiment_name, nb_epochs, calculate_spectral_norms = True)
     end = time.time()
     total_training_time = end-start
 
@@ -155,7 +155,9 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
         print('Accuracy Test: {}%'.format(test_acc))
 
     # plot evolution losses
-    if plot==True: plot_train_val(train_losses, val_losses, period=1, model_name=experiment_name)
+    if plot: 
+        plot_train_val(train_losses, val_losses, period=1, model_name=experiment_name)
+        plot_spectral_norms(spectral_norms=spectral_norms_last_layer)
 
     # return time, losses and accuracies
     returns = {
@@ -188,7 +190,7 @@ def test(model, dataloader, device):
 
   
 
-def train(model, train_loader, val_loader, optimizer, criterion, device, model_name, nb_epochs = 10):
+def train(model, train_loader, val_loader, optimizer, criterion, device, model_name, nb_epochs = 10, calculate_spectral_norms = True):
     """
     Train a model
     """
@@ -214,14 +216,16 @@ def train(model, train_loader, val_loader, optimizer, criterion, device, model_n
             # Collect the Losses
             train_loss += loss.data.item()
 
-            i += 1
-            spectral_norm += torch.linalg.matrix_norm(model.fc.weight.grad, ord = 2)
+            if calculate_spectral_norms:
+                i += 1
+                spectral_norm += torch.linalg.matrix_norm(model.fc.weight.grad, ord = 2)
 
         train_loss = train_loss / len(train_loader)
         train_losses.append(train_loss) 
         #
-        spectral_norms_last_layer.append(spectral_norm)
-        print(f"Epoch {epoch} / {nb_epochs} average spectral norm of last layer for single batch {spectral_norm/i}\n")
+        if calculate_spectral_norms:
+            spectral_norms_last_layer.append(spectral_norm)
+            print(f"Epoch {epoch} / {nb_epochs} average spectral norm of last layer for single batch {spectral_norm/i}\n")
         #
         ##### Evaluation #####
         model.eval()
