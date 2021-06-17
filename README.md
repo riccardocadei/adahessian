@@ -19,7 +19,7 @@ For further information about this project, read [`report.pdf`]().
 The project has been developed and test with `python3.8.3`.
 
 Required libraries: 
-- `Pytorch` (version 1.9.0.)
+- `torch` (version 1.9.0.)
 - `matplotlib.pyplot` (version 3.3.4.)
 - `time` (build in the interpreter)
 - `sklearn` (version 0.24.1.)
