@@ -53,9 +53,18 @@ def plot_grads_sp(first_layer, last_layer, experiment_name='', hybrid=0, save=Tr
         plt.savefig('plots/'+experiment_name+' gradients decay')
     plt.show()
 
-def plot_all_opt(optimizers):
-    plt.figure(figsize=(8,5))
+def plot_all_opt(optimizers,plot='val_losses'):
+    plt.figure(figsize=(8,5),dpi=120)
     for opt in optimizers:
-        plt.plot(opt['val_losses'], label = [k for k, v in locals().items() if v == opt][0])
+        results = load_obj(opt)
+        plt.plot(results[plot], label = results['optimizer_name'])
     plt.legend()
+    if plot == 'val_losses':
+      plt.title("Loss on validation set")
+    elif plot == 'valid_acc':
+      plt.title("Accuracy on validation set")
+    plt.savefig('plots/'+plot+' all_optimizers')
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
+
     plt.show()
