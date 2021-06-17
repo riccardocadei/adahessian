@@ -130,11 +130,11 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
         print('Learning Rate: ', lr,'\n')
     if optimizer_name=='SGD':
         optimizer = torch.optim.SGD(model.parameters(), lr=lr) # lr = 5*1e-3
-    elif optimizer_name=='SGD+momentum':
+    elif optimizer_name=='SGD+Momentum':
         optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum) # lr = 5*1e-3 momentum = 0.9
-    elif optimizer_name=='adam':
+    elif optimizer_name=='Adam':
         optimizer = torch.optim.Adam(model.parameters(), lr=lr) # lr = 5*1e-3
-    elif optimizer_name=='adahessian':
+    elif optimizer_name=='AdaHessian':
         optimizer = optim.Adahessian(model.parameters(),
                                     lr= lr, # lr = 1
                                     betas= (0.9, 0.999),
@@ -142,7 +142,7 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
                                     weight_decay=0.0,
                                     hessian_power=1.0,
                                 )
-    elif optimizer_name=='hybrid':
+    elif optimizer_name=='Hybrid':
         optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum) # lr = 5*1e-3 momentum = 0.9
         hybrid = True
     else:
