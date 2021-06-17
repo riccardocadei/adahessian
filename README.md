@@ -18,7 +18,11 @@ For further information about this project, read [`report.pdf`]().
 ### Environment
 The project has been developed and test with `python3.8.3`.
 
-Required libraries: `Pytorch`, [TO BE COMPLETED]
+Required libraries: 
+- `Pytorch` (version 1.9.0.)
+- matplotlib.pyplot
+- time
+- sklearn
 
 * * *
  
