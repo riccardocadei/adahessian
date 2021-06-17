@@ -1,5 +1,6 @@
 import torch
 import matplotlib.pyplot as plt
+from results.results import *
 
 def plot_train_val(m_train, m_val, period, 
                     al_param=False, metric='Cross-Entropy Loss', save=True, model_name='', hybrid=0):
@@ -50,4 +51,11 @@ def plot_grads_sp(first_layer, last_layer, experiment_name='', hybrid=0, save=Tr
     plt.legend(loc = 'upper right')
     if save==True:
         plt.savefig('plots/'+experiment_name+' gradients decay')
+    plt.show()
+
+def plot_all_opt(optimizers):
+    plt.figure(figsize=(8,5))
+    for opt in optimizers:
+        plt.plot(opt['val_losses'], label = [k for k, v in locals().items() if v == opt][0])
+    plt.legend()
     plt.show()

@@ -10,6 +10,7 @@ from torchvision.transforms import ToTensor
 from torchvision.models import resnet18
 
 from sklearn.model_selection import ParameterGrid
+from results.results import *
 
 import time
 from plot import *
@@ -176,8 +177,9 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
 
     # return time, losses and accuracies
     returns = {
+        "optimizer_name" : optimizer_name,
         "training_time" : total_training_time,
-        "train_losses":train_losses,
+        "train_losses": train_losses,
         "val_losses":valid_losses,
         "train_acc":train_acc,
         "valid_acc":valid_acc,
@@ -185,6 +187,8 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
         "grads_sn_fl":grads_sn_fl,
         "grads_sn_ll":grads_sn_ll
     }
+
+    save_obj(returns,optimizer_name)
 
     return returns
 
