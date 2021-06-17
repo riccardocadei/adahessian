@@ -5,18 +5,7 @@ from results.results import *
 def plot_train_val(m_train, m_val, period, 
                     al_param=False, metric='Cross-Entropy Loss', save=True, model_name='', hybrid=0):
     """
-    Plot the evolution of the metric evaluated on the training and validation set during the trainining
-    
-    Args:
-        m_train: history of the metric evaluated on the train 
-        m_val: history of the metric evaluated on the val 
-        period: number of epochs between 2 valutation of the metric
-        al_param: number of epochs for each learning rate
-        metric: metric used (e.g. Cross-Entropy Loss, Error rate, Accuracy)
-        save: equal to True if you want to save the plot
-        model_name: name of your model (useful to save the plot with a proper name)
-    Returns:
-        plot
+    Plot the evolution of the 'metric' evaluated on the training and validation set during the trainining
     """
     plt.figure(figsize=(8,5))
     plt.title('Evolution of the '+metric ,fontsize=14)
@@ -38,6 +27,11 @@ def plot_train_val(m_train, m_val, period,
     plt.show()
 
 def plot_grads_sp(first_layer, last_layer, experiment_name='', hybrid=0, save=True):
+    """
+    Plot the evolution of the spectral norm of the gradient of the loss 
+    with respect to the weights of a certain layer, evaluated on the training 
+    and validation set during the trainining
+    """
     plt.figure(figsize=(8,5))
     plt.title('Evolution of the Spectral norm of the gradient of the Loss',fontsize=14)
     plt.plot(torch.Tensor(range(1,len(first_layer)+1)), first_layer, 
@@ -54,6 +48,10 @@ def plot_grads_sp(first_layer, last_layer, experiment_name='', hybrid=0, save=Tr
     plt.show()
 
 def plot_all_opt(optimizers,plot='val_losses'):
+    """
+    For all the optimizers considerd plot the evolution of a 'metric' 
+    evaluated on the validation set during the trainining
+    """
     plt.figure(figsize=(8,5),dpi=120)
     for opt in optimizers:
         results = load_obj(opt)
