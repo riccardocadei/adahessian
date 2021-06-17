@@ -20,9 +20,9 @@ The project has been developed and test with `python3.8.3`.
 
 Required libraries: 
 - `Pytorch` (version 1.9.0.)
-- matplotlib.pyplot
-- time
-- sklearn
+- `matplotlib.pyplot`
+- `time`
+- `sklearn`
 
 * * *
  
