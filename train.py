@@ -126,7 +126,7 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
     criterion = torch.nn.CrossEntropyLoss()
     hybrid = False
     if print_:
-        print('Optimizer: ', optimizer_name.capitalize())
+        print('Optimizer: ', optimizer_name)
         print('Learning Rate: ', lr,'\n')
     if optimizer_name=='SGD':
         optimizer = torch.optim.SGD(model.parameters(), lr=lr) # lr = 5*1e-3
@@ -150,7 +150,7 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
     
     # Train the model and measure total training time
     start = time.time()
-    train_losses, valid_losses,grads_sn_fl, grads_sn_ll, change = train(model, train_dl, test_dl, optimizer,criterion, device, experiment_name, nb_epochs, hybrid=hybrid, calculate_spectral_norms = True, print_=print_)
+    train_losses, valid_losses,grads_sn_fl, grads_sn_ll, change, train_acc, valid_acc = train(model, train_dl, test_dl, optimizer,criterion, device, experiment_name, nb_epochs, hybrid=hybrid, calculate_spectral_norms = True, print_=print_)
     end = time.time()
     total_training_time = end-start
 
@@ -162,8 +162,6 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
     model.load_state_dict(torch.load(path))
 
     # Accuracy
-    train_acc = test(model,train_dl, device)
-    valid_acc = test(model,valid_dl, device)
     test_acc = test(model,test_dl, device)
     if print_:
         print('\n\nAccuracy Train: {}%'.format(train_acc))   
@@ -215,6 +213,8 @@ def train(model, train_loader, valid_loader, optimizer, criterion, device, model
     """
     train_losses = []
     valid_losses = []
+    train_acc = []
+    valid_acc = []
     grads_sn_fl = []
     grads_sn_ll = []
     change = 0
@@ -261,6 +261,10 @@ def train(model, train_loader, valid_loader, optimizer, criterion, device, model
                 valid_loss += criterion(valid_preds, targets).data.item()
         valid_loss = valid_loss / len(valid_loader) 
         valid_losses.append(valid_loss)
+
+        train_acc.append(test(model,train_loader,device))
+        valid_acc.append(test(model,valid_loader,device))
+
         # save best model in validation
         if valid_loss <= min(valid_losses):
             torch.save(model.state_dict(), "./model_weights/" + model_name + ".pth")
@@ -276,4 +280,4 @@ def train(model, train_loader, valid_loader, optimizer, criterion, device, model
             change = epoch+1
         if print_: print("Epoch", epoch+1, "/", nb_epochs, "train loss:", train_loss, "valid loss:", valid_loss)
 
-    return train_losses, valid_losses, grads_sn_fl, grads_sn_ll, change
+    return train_losses, valid_losses, grads_sn_fl, grads_sn_ll, change,train_acc, valid_acc
