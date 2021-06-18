@@ -58,11 +58,19 @@ def plot_all_opt(optimizers,plot='val_losses'):
         plt.plot(results[plot], label = results['optimizer_name'])
     plt.legend()
     if plot == 'val_losses':
-      plt.title("Loss on validation set")
+      plt.title("Evolution of the Cross-Entropy Loss on the validation set")
+      plt.ylabel("Cross-Entropu Loss")
     elif plot == 'valid_acc':
-      plt.title("Accuracy on validation set")
+      plt.title("Evolution of the accuracy on the validation set")
+      plt.ylabel("Accuracy")
+    elif plot == 'grads_sn_fl':
+      plt.title("Evolution of the spectral norm of the first convolution layer")
+      plt.ylabel("Spectral norm")
+    elif plot == 'grads_sn_ll':
+      plt.title("Evolution of the spectral norm of the last linear layer")
+      plt.ylabel("Spectral norm")  
     plt.savefig('plots/'+plot+' all_optimizers')
-    plt.xlabel("Epoch")
-    plt.ylabel("Accuracy")
+    plt.xlabel("Number of Epochs")
+
 
     plt.show()

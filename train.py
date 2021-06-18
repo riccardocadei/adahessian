@@ -20,7 +20,7 @@ def parameter_grid(lr_min=0.1, lr_max = 1, step=0.2):
     """
     Create hyperparameter grid, which needs to be searched
     """
-    optimizers = ["adahessian"] #[ "SGD", "SGD+momentum", "adam", "adahessian"]
+    optimizers = ['AdaHessian'] #[ "SGD", "SGD+momentum", "adam", "adahessian"]
     learning_rates = torch.arange(start=lr_min,end=lr_max,step=step,dtype = torch.float64)
     momentums = [0.9]
     model_names = ['resnet18']
@@ -164,8 +164,8 @@ def run_experiment(optimizer_name="optimizer", model_name='resnet18', nb_epochs 
     # Accuracy
     test_acc = test(model,test_dl, device)
     if print_:
-        print('\n\nAccuracy Train: {}%'.format(train_acc))   
-        print('Accuracy Validation: {}%'.format(valid_acc))   
+        print('\n\nAccuracy Train: {}%'.format(train_acc[-1]))   
+        print('Accuracy Validation: {}%'.format(valid_acc[-1]))   
         print('Accuracy Test: {}%\n'.format(test_acc))
 
     # plot evolution losses
