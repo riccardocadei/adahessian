@@ -1,4 +1,4 @@
-# Discussion on First and Second Order Methods in Non-Convex Optimization training a Deep Convolutional Neural Network
+# Discussion on the viability of a modern Second Order Method in Non-Convex Optimization training a Deep Convolutional Neural Network
 
 This repository contains the code and report of the Final Project of [Optimization for Machine Learning (CS-439)](https://edu.epfl.ch/coursebook/en/optimization-for-machine-learning-CS-439) course at [EPFL](https://www.epfl.ch/en/) during Spring term 2021. 
 
