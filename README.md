@@ -13,7 +13,7 @@ Second order algorithms are among the most powerful optimization algorithms with
 In this study we analyze the convenience in using a state-of-the-art Second Order Method (AdaHessian) in Non-Convex Optimization training a Deep Convolutional Neural Network (ResNet18) on MNIST database comparing with traditional First Order Methods. In fact almost all the theoretical results of these methods cannot be extended to Non-Convex optimization and we have to limit to experimental comparisons.
 Advantages and disadvantages of both the methods are discussed and a final hybrid method combining the advantages of both is proposed.
 
-For further information about this project, read [`report.pdf`]().
+For further information about this project, read [`report.pdf`](https://github.com/riccardocadei/CS-439-Optimization-for-ML/blob/main/report.pdf).
 
 ### Environment
 The project has been developed and test with `python3.8.3`.
