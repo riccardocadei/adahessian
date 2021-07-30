@@ -4,7 +4,7 @@ This repository contains the code and report of the Final Project of [Optimizati
 
 ### Team
 This project is accomplished by:
-- Raphael Attias: [@raphaelattias](https://github.com/raphaelattias)
+- Raphaël Attias: [@raphaelattias](https://github.com/raphaelattias)
 - Riccardo Cadei: [@riccardocadei](https://github.com/riccardocadei)
 - Milos Novakovic: [@milos-novakovic](https://github.com/milos-novakovic)
 
